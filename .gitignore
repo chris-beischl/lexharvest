@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets and local config (never commit these)
+.env
+config.toml
+duolingo_payload.json
+
+# Data storage
+*.db
+raw_words.json
+duolingo_payload.json
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Output
+exports/

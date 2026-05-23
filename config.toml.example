@@ -1,0 +1,18 @@
+[duolingo]
+base_url = "https://www.duolingo.com/2017-06-30"
+user_id = "123456789"
+target_language = "es"   # language being learned
+source_language = "de"   # language you already know (UI language)
+page_size = 50
+payload_file = "duolingo_payload.json"
+accept_language = "de-DE,de;q=0.9"
+
+[llm]
+provider = "anthropic"   # "anthropic" | "ollama"
+model = "claude-haiku-4-5-20251001"
+
+[database]
+path = "lexharvest.db"
+
+[export]
+output_dir = "exports"
