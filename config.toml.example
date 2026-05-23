@@ -7,6 +7,9 @@ page_size = 50
 payload_file = "duolingo_payload.json"
 accept_language = "de-DE,de;q=0.9"
 
+[normalizer]
+model = "es_core_news_sm"
+
 [llm]
 provider = "anthropic"   # "anthropic" | "ollama"
 model = "claude-haiku-4-5-20251001"

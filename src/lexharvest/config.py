@@ -21,3 +21,12 @@ def load_duolingo_config(config_path: str | Path = "config.toml") -> DuolingoCon
 
 def load_db_config(config_path: str | Path = "config.toml") -> Any:
     return load_config(config_path)["database"]
+
+
+def load_normalizer_config(config_path: str | Path = "config.toml") -> Any:
+    config = load_config(config_path)
+    normalizer_config = {
+        **config["normalizer"],
+        "language": config["duolingo"]["target_language"],
+    }
+    return normalizer_config
