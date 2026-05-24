@@ -23,6 +23,11 @@ def load_db_config(config_path: str | Path = "config.toml") -> Any:
     return load_config(config_path)["database"]
 
 
+def load_llm_config(config_path: str | Path = "config.toml") -> Any:
+    load_dotenv()
+    return load_config(config_path)["llm"]
+
+
 def load_normalizer_config(config_path: str | Path = "config.toml") -> Any:
     config = load_config(config_path)
     normalizer_config = {

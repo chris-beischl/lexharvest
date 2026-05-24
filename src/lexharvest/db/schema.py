@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS raw_entries (
     is_phrase           INTEGER NOT NULL DEFAULT 0,
     canonical_form      TEXT,
     vocab_entry_id      INTEGER,
-    status              TEXT NOT NULL DEFAULT 'pending',  - see Status in models.py
+    status              TEXT NOT NULL DEFAULT 'pending',  -- see Status in models.py
     split_from_id       INTEGER,
     pos_hint            TEXT,
     skip_reason         TEXT,

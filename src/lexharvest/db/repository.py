@@ -70,6 +70,16 @@ class LexRepository:
         assert cursor.lastrowid is not None
         return cursor.lastrowid
 
+    def get_raw_entries_by_status(self, status: Status) -> list[RawEntry]:
+        cursor = self.conn.execute("SELECT * FROM raw_entries WHERE status = ?", (status,))
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            row_dict = dict(row)
+            row_dict["raw_translations"] = json.loads(row_dict["raw_translations"])
+            result.append(RawEntry(**row_dict))
+        return result
+
     def update_raw_entry(self, id: int, **kwargs: Any) -> None:
         fields = ", ".join([f"{key} = ?" for key in kwargs])
         self.conn.execute(
