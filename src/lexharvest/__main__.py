@@ -49,8 +49,11 @@ async def main() -> None:
         print(f"Inserted: {inserted} | Skipped (duplicate): {skipped}")
 
     llm_config = load_llm_config(args.config)
-
-    splitter = SplitterAgent(f"{llm_config['provider']}:{llm_config['model']}")
+    splitter = SplitterAgent(
+        provider=llm_config["provider"],
+        model_name=llm_config["model"],
+        base_url=llm_config.get("base_url"),
+    )
 
     # smoke test: run splitter on first pending entry
     pending = repo.get_raw_entries_by_status("pending")

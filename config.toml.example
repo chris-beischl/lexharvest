@@ -11,8 +11,9 @@ accept_language = "de-DE,de;q=0.9"
 model = "es_core_news_sm"
 
 [llm]
-provider = "anthropic"   # "anthropic" | "ollama"
-model = "claude-haiku-4-5-20251001"
+provider = "ollama"              # "ollama" | "openai" | "anthropic"
+model = "gemma4:e2b"
+# base_url = "http://localhost:11434/v1"   # ollama only; defaults to localhost if omitted
 
 [database]
 path = "lexharvest.db"

@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 from pydantic_ai import Agent
+from pydantic_ai.output import NativeOutput
 
+from lexharvest.llm.factory import build_model
 from lexharvest.normalizers.base import PosHint
 
 SYSTEM_PROMPT = """You are a vocabulary analyst for language learning.
@@ -40,8 +42,15 @@ class SplitDecision(BaseModel):
 
 
 class SplitterAgent:
-    def __init__(self, model: str):
-        self._agent = Agent(model, output_type=SplitDecision, system_prompt=SYSTEM_PROMPT)
+    def __init__(self, provider: str, model_name: str, base_url: str | None = None):
+        _model, use_native = build_model(provider, model_name, base_url)
+
+        output_type = NativeOutput(SplitDecision) if use_native else SplitDecision
+        self._agent = Agent(
+            model=_model,
+            output_type=output_type,
+            system_prompt=SYSTEM_PROMPT,
+        )
 
     async def split(
         self,

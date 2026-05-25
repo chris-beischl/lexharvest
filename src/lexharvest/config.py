@@ -1,11 +1,17 @@
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import tomllib
 from dotenv import load_dotenv
 
 from .scrapers.duolingo import DuolingoConfig
+
+
+class LlmConfig(TypedDict):
+    provider: str
+    model: str
+    base_url: str | None
 
 
 def load_config(config_path: str | Path = "config.toml") -> dict[str, Any]:
@@ -23,9 +29,13 @@ def load_db_config(config_path: str | Path = "config.toml") -> Any:
     return load_config(config_path)["database"]
 
 
-def load_llm_config(config_path: str | Path = "config.toml") -> Any:
-    load_dotenv()
-    return load_config(config_path)["llm"]
+def load_llm_config(config_path: str | Path = "config.toml") -> LlmConfig:
+    cfg = load_config(config_path)["llm"]
+    return LlmConfig(
+        provider=cfg["provider"],
+        model=cfg["model"],
+        base_url=cfg.get("base_url"),
+    )
 
 
 def load_normalizer_config(config_path: str | Path = "config.toml") -> Any:

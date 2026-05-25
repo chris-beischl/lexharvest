@@ -29,3 +29,6 @@ duolingo_payload.json
 
 # Output
 exports/
+
+# Misc
+.DS_Store
