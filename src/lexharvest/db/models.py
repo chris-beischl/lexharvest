@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 Status = Literal["pending", "processing", "processed", "skipped", "duplicate", "split", "error"]
 LogStatus = Literal["success", "failure", "skipped"]
+VocabStatus = Literal["normalized", "dict_looked_up", "enriched", "done"]
 
 
 class VocabEntry(BaseModel):
@@ -11,6 +12,7 @@ class VocabEntry(BaseModel):
     canonical_form: str
     target_language: str
     source_language: str
+    status: VocabStatus = "normalized"
     is_phrase: bool = False
     part_of_speech: str | None = None
     gender: str | None = None

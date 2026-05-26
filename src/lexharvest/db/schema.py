@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS vocab_entries (
     canonical_form      TEXT NOT NULL,
     target_language     TEXT NOT NULL,
     source_language     TEXT NOT NULL,
+    status              TEXT NOT NULL DEFAULT 'normalized',  -- see VocabStatus in models.py
     is_phrase           INTEGER NOT NULL DEFAULT 0,
     part_of_speech      TEXT,
     gender              TEXT,

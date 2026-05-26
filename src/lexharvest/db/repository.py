@@ -2,7 +2,7 @@ import json
 from sqlite3 import Connection
 from typing import Any
 
-from .models import LogStatus, RawEntry, Status, VocabEntry
+from .models import LogStatus, RawEntry, Status, VocabEntry, VocabStatus
 
 
 class LexRepository:
@@ -78,6 +78,16 @@ class LexRepository:
             row_dict = dict(row)
             row_dict["raw_translations"] = json.loads(row_dict["raw_translations"])
             result.append(RawEntry(**row_dict))
+        return result
+
+    def get_vocab_entries_by_status(self, status: VocabStatus) -> list[VocabEntry]:
+        cursor = self.conn.execute("SELECT * FROM vocab_entries WHERE status = ?", (status,))
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            row_dict = dict(row)
+            row_dict["translations"] = json.loads(row_dict["translations"])
+            result.append(VocabEntry(**row_dict))
         return result
 
     def update_raw_entry(self, id: int, **kwargs: Any) -> None:

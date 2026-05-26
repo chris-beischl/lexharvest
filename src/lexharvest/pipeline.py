@@ -123,7 +123,7 @@ class Pipeline:
             # 3. dict lookup  (TODO)
             # 4. enrich       (TODO)
 
-            # 5. write vocab stub
+            # 5. write VocabEntry (status="normalized"; enrichment happens in phase 2)
             existing = self.repo.get_vocab_entry(canonical_form, entry.target_language)
             if existing is not None:
                 assert existing.id is not None
