@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import dataclass
 from typing import cast
 
@@ -7,6 +8,7 @@ from tqdm import tqdm
 from lexharvest.agents.splitter import SplitDecision, SplitterAgent
 from lexharvest.db.models import RawEntry, VocabEntry
 from lexharvest.db.repository import LexRepository
+from lexharvest.dictionaries.wiktionary import WiktionaryClient
 from lexharvest.normalizers.base import BaseNormalizer, PosHint, strip_article
 
 
@@ -16,6 +18,8 @@ class PipelineStats:
     split: int = 0  # parent entries split into children
     done: int = 0  # completed to VocabEntry
     errors: int = 0
+    dict_hits: int = 0
+    dict_misses: int = 0
 
 
 class Pipeline:
@@ -24,25 +28,46 @@ class Pipeline:
         repo: LexRepository,
         splitter: SplitterAgent,
         normalizer: BaseNormalizer,
+        dict_client: WiktionaryClient,
         concurrency: int = 1,
     ):
         self.repo = repo
         self.splitter = splitter
         self.normalizer = normalizer
+        self.dict_client = dict_client
         self.concurrency = concurrency
 
     async def run(self) -> PipelineStats:
         stats = PipelineStats()
-        pending = self.repo.get_raw_entries_by_status("pending")
         sem = asyncio.Semaphore(self.concurrency)
 
-        async def bounded(entry: RawEntry) -> None:
-            async with sem:
-                await self._process(entry, stats)
+        # Phase 1: pending raw_entries → split → normalize → VocabEntry(normalized)
+        pending = self.repo.get_raw_entries_by_status("pending")
 
-        tasks = [bounded(entry) for entry in pending]
-        for coro in tqdm(asyncio.as_completed(tasks), total=len(tasks)):
+        async def normalize(entry: RawEntry) -> None:
+            async with sem:
+                await self._normalize_entry(entry, stats)
+
+        tasks = [normalize(e) for e in pending]
+        for coro in tqdm(asyncio.as_completed(tasks), total=len(tasks), desc="normalize"):
             await coro
+
+        # Phase 2: VocabEntry(normalized) → dict lookup → dict_looked_up
+        normalized = self.repo.get_vocab_entries_by_status("normalized")
+
+        async def dict_lookup(vocab: VocabEntry) -> None:
+            async with sem:
+                try:
+                    await self._run_dict_lookup(vocab)
+                    stats.dict_hits += 1
+                except Exception:
+                    stats.dict_misses += 1  # will retry next run (status stays "normalized")
+
+        tasks2 = [dict_lookup(v) for v in normalized]
+        for coro in tqdm(asyncio.as_completed(tasks2), total=len(tasks2), desc="dict lookup"):
+            await coro
+
+        # Phase 3: VocabEntry(dict_looked_up) → enrich → done  (TODO)
 
         return stats
 
@@ -68,22 +93,34 @@ class Pipeline:
             canonical = self.normalizer.normalize(canonical, pos_hint)
         return canonical
 
-    async def _run_dict_lookup(self, canonical_form: str, language: str) -> None:
-        pass  # TODO
+    async def _run_dict_lookup(self, vocab: VocabEntry) -> None:
+        assert vocab.id is not None
+        result = await self.dict_client.lookup(vocab.canonical_form, vocab.target_language)
+        if result is None:
+            self.repo.update_vocab_entry(vocab.id, status="dict_looked_up")
+            return
+
+        self.repo.update_vocab_entry(
+            vocab.id,
+            status="dict_looked_up",
+            part_of_speech=result.part_of_speech,
+            example_sentence=result.example_sentence,
+            example_translation=result.example_translation,
+            definitions=json.dumps(result.definitions),
+            dict_source="wiktionary",
+        )
 
     async def _run_enrich(self) -> None:
         pass  # TODO
 
-    async def _process(self, entry: RawEntry, stats: PipelineStats) -> None:
+    async def _normalize_entry(self, entry: RawEntry, stats: PipelineStats) -> None:
         # try/except wraps everything; on exception → status="error", log
         # 1. splitter.split()
         #    → should_split: insert children as new RawEntry(split_from_id=parent.id,
         #                    surface_form=hint_form, pos_hint=..., raw_translations=subset)
         #                    mark parent status="split", return
         # 2. normalizer.normalize(surface_form, pos_hint or "other") → canonical_form
-        # 3. dict lookup   ← stub (TODO)
-        # 4. enricher      ← stub (TODO)
-        # 5. insert VocabEntry(needs_review=True), mark RawEntry status="done"
+        # 3. insert VocabEntry(needs_review=True), mark RawEntry status="done"
         # log each step via repo.log()
 
         assert entry.id is not None
@@ -120,16 +157,16 @@ class Pipeline:
             self.repo.update_raw_entry(entry.id, canonical_form=canonical_form)
             self.repo.log(entry.id, "normalize", "success", canonical_form)
 
-            # 3. dict lookup  (TODO)
-            # 4. enrich       (TODO)
-
-            # 5. write VocabEntry (status="normalized"; enrichment happens in phase 2)
+            # 3. create/link VocabEntry ---------------------------------------
             existing = self.repo.get_vocab_entry(canonical_form, entry.target_language)
             if existing is not None:
                 assert existing.id is not None
                 self.repo.update_raw_entry(entry.id, status="done", vocab_entry_id=existing.id)
                 self.repo.log(
-                    entry.id, "db_write", "skipped", f"linked to existing vocab {existing.id}"
+                    entry.id,
+                    "db_write",
+                    "skipped",
+                    f"linked to existing vocab {existing.id}",
                 )
             else:
                 vocab = VocabEntry(

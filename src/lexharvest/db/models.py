@@ -17,8 +17,10 @@ class VocabEntry(BaseModel):
     part_of_speech: str | None = None
     gender: str | None = None
     irregular: bool = False
+    definitions: list[str] = []
     translations: list[str]
     example_sentence: str | None = None
+    example_translation: str | None = None
     disambiguation_note: str | None = None
     needs_review: bool = False
     dict_source: str | None = None

@@ -48,6 +48,9 @@ class LexRepository:
 
         row_dict = dict(row)
         row_dict["translations"] = json.loads(row_dict["translations"])
+        row_dict["definitions"] = (
+            json.loads(row_dict["definitions"]) if row_dict["definitions"] else []
+        )
         return VocabEntry(**row_dict)
 
     def insert_vocab_entry(self, entry: VocabEntry) -> int:
@@ -58,6 +61,7 @@ class LexRepository:
 
         data = entry.model_dump(exclude={"id", "created_at", "updated_at"})
         data["translations"] = json.dumps(data["translations"])
+        data["definitions"] = json.dumps(data["definitions"])
 
         columns = ", ".join(data.keys())
         placeholders = ", ".join(["?"] * len(data))
@@ -87,6 +91,9 @@ class LexRepository:
         for row in rows:
             row_dict = dict(row)
             row_dict["translations"] = json.loads(row_dict["translations"])
+            row_dict["definitions"] = (
+                json.loads(row_dict["definitions"]) if row_dict["definitions"] else []
+            )
             result.append(VocabEntry(**row_dict))
         return result
 
@@ -94,6 +101,14 @@ class LexRepository:
         fields = ", ".join([f"{key} = ?" for key in kwargs])
         self.conn.execute(
             f"UPDATE raw_entries SET {fields} WHERE id = ?",
+            list(kwargs.values()) + [id],
+        )
+        self.conn.commit()
+
+    def update_vocab_entry(self, id: int, **kwargs: Any) -> None:
+        fields = ", ".join([f"{key} = ?" for key in kwargs])
+        self.conn.execute(
+            f"UPDATE vocab_entries SET {fields} WHERE id = ?",
             list(kwargs.values()) + [id],
         )
         self.conn.commit()

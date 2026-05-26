@@ -12,6 +12,7 @@ from lexharvest.config import (
 from lexharvest.db.models import RawEntry
 from lexharvest.db.repository import LexRepository
 from lexharvest.db.schema import init_db
+from lexharvest.dictionaries.wiktionary import WiktionaryClient
 from lexharvest.normalizers.spacy_normalizer import SpaCyNormalizer
 from lexharvest.pipeline import Pipeline
 from lexharvest.scrapers.duolingo import DuolingoExtractor
@@ -79,16 +80,23 @@ async def main() -> None:
     normalizer_config = load_normalizer_config(args.config)
     normalizer = SpaCyNormalizer(normalizer_config["language"], normalizer_config["model"])
 
-    pipeline = Pipeline(
-        repo=repo,
-        splitter=splitter,
-        normalizer=normalizer,
-        concurrency=args.concurrency,
-    )
-    stats = await pipeline.run()
+    dict_client = WiktionaryClient()
+    try:
+        pipeline = Pipeline(
+            repo=repo,
+            splitter=splitter,
+            normalizer=normalizer,
+            dict_client=dict_client,
+            concurrency=args.concurrency,
+        )
+        stats = await pipeline.run()
+    finally:
+        await dict_client.aclose()
+
     print(
         f"Processed: {stats.processed} | Split: {stats.split} | Done: {stats.done} "
-        f"| Errors: {stats.errors}"
+        f"| Errors: {stats.errors} | Dict hits: {stats.dict_hits} | Dict misses: "
+        f"{stats.dict_misses}"
     )
 
 

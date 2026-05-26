@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS vocab_entries (
     gender              TEXT,
     irregular           INTEGER NOT NULL DEFAULT 0,
     translations        TEXT NOT NULL,          -- JSON array
+    definitions         TEXT,                          -- JSON array, from dict lookup
     example_sentence    TEXT,
+    example_translation TEXT,
     disambiguation_note TEXT,
     needs_review        INTEGER NOT NULL DEFAULT 0,
     dict_source         TEXT,
