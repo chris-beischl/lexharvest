@@ -16,7 +16,7 @@ class SpaCyNormalizer(BaseNormalizer):
         with open(pos_hints) as f:
             self.pos_hints = json.load(f)[self.language]
 
-    def normalize(self, surface_form: str, pos_hint: PosHint | None = None) -> str | None:
+    def normalize(self, surface_form: str, pos_hint: PosHint | None = None) -> str:
         prefix = self.pos_hints.get(pos_hint)
 
         text = f"{prefix} {surface_form}" if prefix else surface_form
@@ -24,5 +24,5 @@ class SpaCyNormalizer(BaseNormalizer):
 
         return doc[-1].lemma_
 
-    def __call__(self, surface_form: str, pos_hint: PosHint | None = None) -> str | None:
+    def __call__(self, surface_form: str, pos_hint: PosHint | None = None) -> str:
         return self.normalize(surface_form, pos_hint)

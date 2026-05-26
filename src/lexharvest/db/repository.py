@@ -2,7 +2,7 @@ import json
 from sqlite3 import Connection
 from typing import Any
 
-from .models import RawEntry, Status, VocabEntry
+from .models import LogStatus, RawEntry, Status, VocabEntry
 
 
 class LexRepository:
@@ -88,7 +88,7 @@ class LexRepository:
         )
         self.conn.commit()
 
-    def log(self, raw_entry_id: int, step: str, status: Status, detail: str | None) -> None:
+    def log(self, raw_entry_id: int, step: str, status: LogStatus, detail: str | None) -> None:
         self.conn.execute(
             "INSERT INTO processing_log (raw_entry_id, step, status, detail) VALUES (?, ?, ?, ?)",
             (raw_entry_id, step, status, detail),

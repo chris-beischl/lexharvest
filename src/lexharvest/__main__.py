@@ -3,10 +3,17 @@ from argparse import ArgumentParser
 from dotenv import load_dotenv
 
 from lexharvest.agents.splitter import SplitterAgent
-from lexharvest.config import load_db_config, load_duolingo_config, load_llm_config
+from lexharvest.config import (
+    load_db_config,
+    load_duolingo_config,
+    load_llm_config,
+    load_normalizer_config,
+)
 from lexharvest.db.models import RawEntry
 from lexharvest.db.repository import LexRepository
 from lexharvest.db.schema import init_db
+from lexharvest.normalizers.spacy_normalizer import SpaCyNormalizer
+from lexharvest.pipeline import Pipeline
 from lexharvest.scrapers.duolingo import DuolingoExtractor
 
 
@@ -14,6 +21,13 @@ async def main() -> None:
     parser = ArgumentParser()
     parser.add_argument("--config", default="config.toml", type=str)
     parser.add_argument("--skip-scrape", action="store_true", default=False)
+    parser.add_argument("--retry-errors", action="store_true", default=False)
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=1,
+        help="Number of concurrent processing tasks",
+    )
     args = parser.parse_args()
 
     load_dotenv()
@@ -25,6 +39,13 @@ async def main() -> None:
     db_config = load_db_config(args.config)
     conn = init_db(db_config["path"])
     repo = LexRepository(conn)
+
+    if args.retry_errors:
+        errors = repo.get_raw_entries_by_status("error")
+        for e in errors:
+            assert e.id is not None
+            repo.update_raw_entry(e.id, status="pending", error_message=None)
+        print(f"Reset {len(errors)} errored entries to pending")
 
     if not args.skip_scrape:
         inserted = 0
@@ -52,22 +73,23 @@ async def main() -> None:
     splitter = SplitterAgent(
         provider=llm_config["provider"],
         model_name=llm_config["model"],
-        base_url=llm_config.get("base_url"),
+        base_url=llm_config["base_url"],
     )
 
-    # smoke test: run splitter on first pending entry
-    pending = repo.get_raw_entries_by_status("pending")
-    if pending:
-        entry = pending[0]
-        decision = await splitter.split(
-            word=entry.surface_form,
-            translations=entry.raw_translations,
-            target_language=entry.target_language,
-            source_language=entry.source_language,
-        )
-        print(f"Tested: '{entry.surface_form}' → split={decision.should_split}")
-        for e in decision.entries:
-            print(f"  {e.hint_form} [{e.pos_hint}]: {e.translations}")
+    normalizer_config = load_normalizer_config(args.config)
+    normalizer = SpaCyNormalizer(normalizer_config["language"], normalizer_config["model"])
+
+    pipeline = Pipeline(
+        repo=repo,
+        splitter=splitter,
+        normalizer=normalizer,
+        concurrency=args.concurrency,
+    )
+    stats = await pipeline.run()
+    print(
+        f"Processed: {stats.processed} | Split: {stats.split} | Done: {stats.done} "
+        f"| Errors: {stats.errors}"
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.output import NativeOutput
 
@@ -27,7 +27,10 @@ For each entry after splitting, provide:
 - translations: the subset of translations relevant to this entry
 - pos_hint: the part of speech
 
-If should_split is false, return entries as an empty list."""
+Always return at least one entry.
+If should_split is false, return exactly one entry with the canonical hint_form
+of the word (e.g. 'tener que' for a verb phrase, 'los lentes de sol' for a
+compound noun) and all translations."""
 
 
 class SplitEntry(BaseModel):
@@ -38,7 +41,7 @@ class SplitEntry(BaseModel):
 
 class SplitDecision(BaseModel):
     should_split: bool
-    entries: list[SplitEntry]
+    entries: list[SplitEntry] = Field(min_length=1)
 
 
 class SplitterAgent:

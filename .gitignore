@@ -16,6 +16,7 @@ duolingo_payload.json
 
 # Data storage
 *.db
+*.db.backup
 raw_words.json
 duolingo_payload.json
 

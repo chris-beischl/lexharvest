@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 Status = Literal["pending", "processing", "processed", "skipped", "duplicate", "split", "error"]
+LogStatus = Literal["success", "failure", "skipped"]
 
 
 class VocabEntry(BaseModel):
