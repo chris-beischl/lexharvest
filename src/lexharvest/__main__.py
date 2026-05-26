@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 
 from dotenv import load_dotenv
 
+from lexharvest.agents.enricher import EnricherAgent
 from lexharvest.agents.splitter import SplitterAgent
 from lexharvest.config import (
     load_db_config,
@@ -77,6 +78,12 @@ async def main() -> None:
         base_url=llm_config["base_url"],
     )
 
+    enricher = EnricherAgent(
+        provider=llm_config["provider"],
+        model_name=llm_config["model"],
+        base_url=llm_config["base_url"],
+    )
+
     normalizer_config = load_normalizer_config(args.config)
     normalizer = SpaCyNormalizer(normalizer_config["language"], normalizer_config["model"])
 
@@ -87,6 +94,7 @@ async def main() -> None:
             splitter=splitter,
             normalizer=normalizer,
             dict_client=dict_client,
+            enricher=enricher,
             concurrency=args.concurrency,
         )
         stats = await pipeline.run()
@@ -96,7 +104,8 @@ async def main() -> None:
     print(
         f"Processed: {stats.processed} | Split: {stats.split} | Done: {stats.done} "
         f"| Errors: {stats.errors} | Dict hits: {stats.dict_hits} | Dict misses: "
-        f"{stats.dict_misses}"
+        f"{stats.dict_misses} | | Enriched: {stats.enriched} | Enrich errors: "
+        f"{stats.enrich_errors}"
     )
 
 

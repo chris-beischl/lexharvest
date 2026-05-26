@@ -5,6 +5,7 @@ from typing import cast
 
 from tqdm import tqdm
 
+from lexharvest.agents.enricher import EnricherAgent
 from lexharvest.agents.splitter import SplitDecision, SplitterAgent
 from lexharvest.db.models import RawEntry, VocabEntry
 from lexharvest.db.repository import LexRepository
@@ -20,6 +21,8 @@ class PipelineStats:
     errors: int = 0
     dict_hits: int = 0
     dict_misses: int = 0
+    enriched: int = 0
+    enrich_errors: int = 0
 
 
 class Pipeline:
@@ -29,12 +32,14 @@ class Pipeline:
         splitter: SplitterAgent,
         normalizer: BaseNormalizer,
         dict_client: WiktionaryClient,
+        enricher: EnricherAgent,
         concurrency: int = 1,
     ):
         self.repo = repo
         self.splitter = splitter
         self.normalizer = normalizer
         self.dict_client = dict_client
+        self.enricher = enricher
         self.concurrency = concurrency
 
     async def run(self) -> PipelineStats:
@@ -68,6 +73,19 @@ class Pipeline:
             await coro
 
         # Phase 3: VocabEntry(dict_looked_up) → enrich → done  (TODO)
+        to_enrich = self.repo.get_vocab_entries_by_status("dict_looked_up")
+
+        async def enrich(vocab: VocabEntry) -> None:
+            async with sem:
+                try:
+                    await self._run_enrich(vocab)
+                    stats.enriched += 1
+                except Exception:
+                    stats.enrich_errors += 1  # status stays "dict_looked_up", retried next run
+
+        tasks3 = [enrich(v) for v in to_enrich]
+        for coro in tqdm(asyncio.as_completed(tasks3), total=len(tasks3), desc="enrich"):
+            await coro
 
         return stats
 
@@ -110,8 +128,19 @@ class Pipeline:
             dict_source="wiktionary",
         )
 
-    async def _run_enrich(self) -> None:
-        pass  # TODO
+    async def _run_enrich(self, vocab: VocabEntry) -> None:
+        assert vocab.id is not None
+        enriched = await self.enricher.enrich(vocab)
+        self.repo.update_vocab_entry(
+            vocab.id,
+            status="done",
+            gender=enriched.gender,
+            is_phrase=enriched.is_phrase,
+            part_of_speech=None if enriched.is_phrase else vocab.part_of_speech,
+            disambiguation_note=enriched.disambiguation_note,
+            example_translation=enriched.example_translation,
+            needs_review=enriched.needs_review,
+        )
 
     async def _normalize_entry(self, entry: RawEntry, stats: PipelineStats) -> None:
         # try/except wraps everything; on exception → status="error", log
