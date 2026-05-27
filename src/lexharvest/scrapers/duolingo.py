@@ -68,6 +68,7 @@ class DuolingoExtractor:
 
         r = httpx.post(url, params=params, headers=headers, json=payload)
         if r.status_code in (401, 403, 406):
+            print(f"Error {r.status_code}: {r.text}")
             raise RuntimeError(
                 "Duolingo session expired — refresh DUOLINGO_AUTHENTIFICATION in .env"
             )
