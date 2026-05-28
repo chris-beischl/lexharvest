@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Duolingo vocabulary extraction and LLM enrichment pipeline"
 readme = "README.md"
 authors = [
-    { name = "Christian Beischl", email = "christian.beischl@tum.de" }
+    { name = "Christian Beischl", email = "ch.beischl@icloud.com" }
 ]
 requires-python = ">=3.10.4"
 dependencies = [

@@ -8,6 +8,7 @@ Personal vocabulary pipeline: extract words from Duolingo, enrich them via an LL
 - [Setup](#setup)
 - [Getting your Duolingo credentials](#getting-your-duolingo-credentials)
 - [Run](#run)
+- [Docker](#docker)
 - [Exporting to Anki](#exporting-to-anki)
 - [Customising the Anki card template](#customising-the-anki-card-template)
 - [Contributing](#contributing)
@@ -163,6 +164,49 @@ This will scrape your Duolingo vocabulary, normalize and enrich each word, and s
 | `--export FILENAME` | Export completed entries to the given file path |
 | `--export-format FORMAT` | Export format: `csv`, `anki-tsv`, or `anki-apkg` (default: `anki-apkg`) |
 | `--anki-template PATH` | Path to the Anki template TOML (default: `anki_template.toml`) |
+
+---
+
+## Docker
+
+If you don't want to install Python and uv locally, you can run LexHarvest in a Docker container. [Docker Desktop](https://www.docker.com/products/docker-desktop/) is the only requirement.
+
+### Build the image
+
+```sh
+docker build -t lexharvest .
+```
+
+This installs all dependencies and downloads the default spaCy models (Spanish target, German source). The build takes a few minutes on first run — subsequent builds are cached.
+
+**Custom language models:**
+
+If you're learning a different language, pass your models as build args:
+
+```sh
+docker build -t lexharvest \
+  --build-arg SOURCE_MODEL=fr_core_news_sm \
+  --build-arg TARGET_MODEL=it_core_news_sm \
+  .
+```
+
+Find the right model names on the [spaCy models page](https://spacy.io/usage/models).
+
+### Run
+
+Mount your project directory so the container can read your config and write results back to your filesystem:
+
+```sh
+docker run -v $(pwd):/app lexharvest
+```
+
+All CLI flags work exactly the same as the non-Docker version:
+
+```sh
+docker run -v $(pwd):/app lexharvest --skip-scrape --export exports/lexharvest.apkg
+```
+
+> The container reads `config.toml`, `.env`, and `duolingo_payload.json` from your mounted directory and writes `lexharvest.db` and exports back to the same location.
 
 ---
 
