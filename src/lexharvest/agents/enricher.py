@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
@@ -5,37 +7,48 @@ from pydantic_ai import Agent
 
 from lexharvest.db.models import VocabEntry
 
-SYSTEM_PROMPT = """You are enriching a vocabulary entry for a language learner.
+BASE_SYSTEM_PROMPT = """You are enriching a vocabulary entry for a language learner.
 
-Given a word in the target language with its translations in the source language and
+The target language (the language being learned) is TARGET_LANGUAGE.
+The source language (the learner's native language) is SOURCE_LANGUAGE.
+
+Given a word in TARGET_LANGUAGE with its translations in SOURCE_LANGUAGE and
 optional dictionary data in English, fill in the missing linguistic metadata.
 
-- gender: grammatical gender of the word — "masculine", "feminine", or "neuter".
-  null if the word has no grammatical gender (e.g. verbs, adverbs, conjunctions).
+- gender: ONLY for nouns. Set to "masculine", "feminine", or "neuter" based on the
+  grammatical gender of the noun in TARGET_LANGUAGE. For every other part of
+  speech — verbs, adjectives, adverbs, prepositions, conjunctions, determiners,
+  pronouns, numerals, interjections — set to null, no exceptions.
 
-- article: the definite article as it is actually used with this word in practice.
-  IMPORTANT: the article may differ from what the gender alone implies. For example,
-  Spanish "agua" is grammatically feminine but takes the masculine article "el" in
-  singular (el agua) to avoid the vowel clash — so article should be "el", not "la".
-  Provide only the article itself (e.g. "el", "la", "der", "die", "das"). null if
-  not applicable (verbs, adjectives, phrases, etc.).
+- article: ONLY for nouns. Provide the definite article as it is actually used with
+  this word in TARGET_LANGUAGE. The article MUST be a TARGET_LANGUAGE article —
+  never use a SOURCE_LANGUAGE article. IMPORTANT: the article may differ from what
+  the gender alone implies — for example, Spanish "agua" is grammatically feminine
+  but uses the masculine article "el" in singular to avoid the vowel clash, so
+  article is "el" not "la". For every other part of speech, set to null.
 
-- is_phrase: true for multi-word expressions, idioms, and verbal periphrases
-  (e.g. tener que, a veces, terminar de). false for single words and compound
-  nouns (e.g. lentes de sol). When unsure, ask: do these words need to appear
-  together to carry the intended meaning?
+- is_phrase: true for multi-word expressions, idioms, and verbal periphrases.
+  false for single words and compound nouns. When unsure, ask: do these words need
+  to appear together to carry the intended meaning?
 
-- translations: the translations are already normalized. Only return a corrected
-  list if the translations are clearly malformed (e.g. contain raw HTML, garbled
-  text, or obvious errors). Otherwise return null to keep the existing translations.
+- translations: the translations have already been normalized by a linguistic tool.
+  Your default answer is null. Only return a replacement list in the rare case that
+  the translations are completely broken (e.g. raw HTML, garbled text, or gibberish).
+  Do NOT add translations, do NOT rephrase, do NOT expand, do NOT improve — if the
+  translations look reasonable at all, return null.
 
-- disambiguation_note: write exclusively in the source language specified in the
-  input. Only include if this word is easily confused with another, or if a phrase
-  has a non-obvious or idiomatic meaning (e.g. verbal periphrases like
-  'terminar de + inf'). null if not needed.
+- disambiguation_note: write exclusively in SOURCE_LANGUAGE. Only include if this
+  word is easily confused with another, or if a phrase has a non-obvious or idiomatic
+  meaning. null if not needed.
 
-- example_translation: translate the provided example sentence into the source
-  language naturally. null if no example is provided.
+- example_translation: translate the provided example sentence into SOURCE_LANGUAGE
+  naturally. The translation MUST be in SOURCE_LANGUAGE — never in English or any
+  other language. null if no example is provided.
+
+- irregular: true if the word has irregular forms that a learner should be aware of.
+  For verbs: irregular conjugation (e.g. ir, ser, tener). For nouns: irregular plural
+  (e.g. el lápiz → los lápices). For adjectives: irregular comparative/superlative.
+  false if the word follows standard rules. When uncertain, set needs_review to true.
 
 - needs_review: true if you are uncertain about any field."""
 
@@ -48,17 +61,39 @@ class EnrichmentResult(BaseModel):
     example_translation: str | None  # German translation of example_sentence
     translations: list[str] | None  # normalized translations in the source language
     needs_review: bool  # True if uncertain about any field
+    irregular: bool  # True if the word is irregular in any way
 
 
 class EnricherAgent:
-    def __init__(self, provider: str, model_name: str, base_url: str | None = None):
+    def __init__(
+        self,
+        provider: str,
+        model_name: str,
+        target_language: str,
+        source_language: str,
+        base_url: str | None = None,
+        language_hints_path: Path | None = None,
+    ):
         from pydantic_ai.output import NativeOutput
 
         from lexharvest.llm.factory import build_model
 
+        language_hints = ""
+        if language_hints_path is not None:
+            with open(language_hints_path) as f:
+                hint = json.load(f).get(target_language)
+                if hint is not None:
+                    language_hints = "\n\n" + hint.strip()
+
+        system_prompt = (
+            (BASE_SYSTEM_PROMPT + language_hints)
+            .replace("TARGET_LANGUAGE", target_language)
+            .replace("SOURCE_LANGUAGE", source_language)
+        )
+
         model, use_native = build_model(provider, model_name, base_url)
         output_type = NativeOutput(EnrichmentResult) if use_native else EnrichmentResult
-        self._agent = Agent(model, output_type=output_type, system_prompt=SYSTEM_PROMPT)
+        self._agent = Agent(model, output_type=output_type, system_prompt=system_prompt)
 
     async def enrich(self, vocab: VocabEntry) -> EnrichmentResult:
         prompt = (

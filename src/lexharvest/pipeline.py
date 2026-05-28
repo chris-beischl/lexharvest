@@ -160,6 +160,7 @@ class Pipeline:
             status="done",
             gender=enriched.gender,
             article=enriched.article,
+            irregular=enriched.irregular,
             is_phrase=enriched.is_phrase,
             translations=enriched.translations or vocab.translations,
             part_of_speech=None if enriched.is_phrase else vocab.part_of_speech,
@@ -169,15 +170,6 @@ class Pipeline:
         )
 
     async def _normalize_entry(self, entry: RawEntry, stats: PipelineStats) -> None:
-        # try/except wraps everything; on exception → status="error", log
-        # 1. splitter.split()
-        #    → should_split: insert children as new RawEntry(split_from_id=parent.id,
-        #                    surface_form=hint_form, pos_hint=..., raw_translations=subset)
-        #                    mark parent status="split", return
-        # 2. normalizer.normalize(surface_form, pos_hint or "other") → canonical_form
-        # 3. insert VocabEntry(needs_review=True), mark RawEntry status="done"
-        # log each step via repo.log()
-
         assert entry.id is not None
         try:
             # 1. split --------------------------------------------------------

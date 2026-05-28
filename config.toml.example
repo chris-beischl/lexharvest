@@ -11,6 +11,9 @@ accept_language = "de-DE,de;q=0.9"
 target_model = "es_core_news_sm"
 source_model = "de_core_news_sm"
 
+[enricher]
+language_hints_path = "language_prompt_injections.json"
+
 [llm]
 provider = "ollama"              # "ollama" | "openai" | "anthropic"
 model = "gemma4:e2b"

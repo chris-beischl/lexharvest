@@ -46,3 +46,9 @@ def load_normalizer_config(config_path: str | Path = "config.toml") -> Any:
         "source_language": config["duolingo"]["source_language"],
     }
     return normalizer_config
+
+
+def load_enricher_config(config_path: str | Path = "config.toml") -> Any:
+    config = load_config(config_path)
+    enricher_config = config["enricher"]
+    return enricher_config

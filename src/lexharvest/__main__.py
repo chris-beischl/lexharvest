@@ -8,6 +8,7 @@ from lexharvest.agents.splitter import SplitterAgent
 from lexharvest.config import (
     load_db_config,
     load_duolingo_config,
+    load_enricher_config,
     load_llm_config,
     load_normalizer_config,
 )
@@ -93,10 +94,17 @@ async def main() -> None:
         base_url=llm_config["base_url"],
     )
 
+    enricher_config = load_enricher_config(args.config)
+    language_hints_path = enricher_config.get("language_hints_path")
+    language_hints_path = Path(language_hints_path) if language_hints_path else None
+
     enricher = EnricherAgent(
         provider=llm_config["provider"],
         model_name=llm_config["model"],
         base_url=llm_config["base_url"],
+        target_language=target_language,
+        source_language=source_language,
+        language_hints_path=language_hints_path,
     )
 
     normalizer_config = load_normalizer_config(args.config)

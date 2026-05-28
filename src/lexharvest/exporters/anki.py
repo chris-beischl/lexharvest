@@ -10,6 +10,7 @@ class AnkiExporter(CSVExporter):
                 "translations",
                 "part_of_speech",
                 "gender",
+                "article",
                 "irregular",
                 "example_sentence",
                 "example_translation",
@@ -20,9 +21,21 @@ class AnkiExporter(CSVExporter):
                 "translations": "Translation",
                 "part_of_speech": "Part of Speech",
                 "gender": "Gender",
+                "article": "Article",
                 "example_sentence": "Example Sentence",
                 "example_translation": "Example Translation",
                 "disambiguation_note": "Disambiguation",
+            },
+            value_mapping={
+                "Gender": {
+                    "masculine": "m",
+                    "feminine": "f",
+                    "neuter": "n",
+                },
+                "irregular": {
+                    True: "irregular",
+                    False: None,
+                },
             },
             list_separator=", ",
         )
