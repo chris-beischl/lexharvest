@@ -11,7 +11,6 @@ _DEFAULT_POS_HINTS = Path(__file__).parent / "pos_hints.json"
 class SpaCyNormalizer(BaseNormalizer):
     def __init__(self, language: str, model: str, pos_hints: str | Path = _DEFAULT_POS_HINTS):
         self.language = language
-        
         try:
             self.nlp = spacy.load(model)
         except OSError:

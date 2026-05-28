@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -14,6 +15,7 @@ from lexharvest.db.models import RawEntry
 from lexharvest.db.repository import LexRepository
 from lexharvest.db.schema import init_db
 from lexharvest.dictionaries.wiktionary import WiktionaryClient
+from lexharvest.exporters.anki import AnkiExporter
 from lexharvest.normalizers.spacy_normalizer import SpaCyNormalizer
 from lexharvest.pipeline import Pipeline
 from lexharvest.scrapers.duolingo import DuolingoExtractor
@@ -35,6 +37,13 @@ async def main() -> None:
         type=int,
         default=1,
         help="Number of concurrent Wiktionary lookup requests",
+    )
+    parser.add_argument(
+        "--export",
+        type=str,
+        default=None,
+        metavar="FILENAME",
+        help="Export completed entries as an Anki-ready CSV to the given file path",
     )
     args = parser.parse_args()
 
@@ -114,6 +123,13 @@ async def main() -> None:
         f"{stats.dict_misses} | | Enriched: {stats.enriched} | Enrich errors: "
         f"{stats.enrich_errors}"
     )
+
+    if args.export:
+        output_path = Path(args.export)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        entries = repo.get_vocab_entries_by_status("done")
+        AnkiExporter().export(entries, output_path)
+        print(f"Exported {len(entries)} entries to {output_path}")
 
 
 if __name__ == "__main__":
