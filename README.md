@@ -169,7 +169,7 @@ This will scrape your Duolingo vocabulary, normalize and enrich each word, and s
 
 ## Docker
 
-If you don't want to install Python and uv locally, you can run LexHarvest in a Docker container. [Docker Desktop](https://www.docker.com/products/docker-desktop/) is the only requirement.
+If you don't want to install Python and uv locally, you can run LexHarvest in a Docker container. [Docker Desktop](https://www.docker.com/products/docker-desktop/) is the only requirement. [Podman](https://podman.io/) works as a drop-in replacement — just swap `docker` for `podman` in all commands below.
 
 ### Build the image
 
