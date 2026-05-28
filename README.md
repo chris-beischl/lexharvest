@@ -141,3 +141,4 @@ uv run python -m lexharvest
 | `--skip-scrape` | Skip fetching from Duolingo, process existing DB entries only |
 | `--retry-errors` | Reset all errored entries to pending and reprocess them |
 | `--concurrency N` | Number of concurrent LLM calls (default: 1) |
+| `--dict-concurrency N` | Number of concurrent Wiktionary requests (default: 1) |

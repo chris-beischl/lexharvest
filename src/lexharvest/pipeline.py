@@ -34,6 +34,7 @@ class Pipeline:
         dict_client: WiktionaryClient,
         enricher: EnricherAgent,
         concurrency: int = 1,
+        dict_concurrency: int = 1,
     ):
         self.repo = repo
         self.splitter = splitter
@@ -41,10 +42,12 @@ class Pipeline:
         self.dict_client = dict_client
         self.enricher = enricher
         self.concurrency = concurrency
+        self.dict_concurrency = dict_concurrency
 
     async def run(self) -> PipelineStats:
         stats = PipelineStats()
         sem = asyncio.Semaphore(self.concurrency)
+        dict_sem = asyncio.Semaphore(self.dict_concurrency)
 
         # Phase 1: pending raw_entries → split → normalize → VocabEntry(normalized)
         pending = self.repo.get_raw_entries_by_status("pending")
@@ -61,7 +64,7 @@ class Pipeline:
         normalized = self.repo.get_vocab_entries_by_status("normalized")
 
         async def dict_lookup(vocab: VocabEntry) -> None:
-            async with sem:
+            async with dict_sem:
                 try:
                     await self._run_dict_lookup(vocab)
                     stats.dict_hits += 1

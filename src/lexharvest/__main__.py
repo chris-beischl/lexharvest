@@ -30,6 +30,12 @@ async def main() -> None:
         default=1,
         help="Number of concurrent processing tasks",
     )
+    parser.add_argument(
+        "--dict-concurrency",
+        type=int,
+        default=1,
+        help="Number of concurrent Wiktionary lookup requests",
+    )
     args = parser.parse_args()
 
     load_dotenv()
@@ -96,6 +102,7 @@ async def main() -> None:
             dict_client=dict_client,
             enricher=enricher,
             concurrency=args.concurrency,
+            dict_concurrency=args.dict_concurrency,
         )
         stats = await pipeline.run()
     finally:
