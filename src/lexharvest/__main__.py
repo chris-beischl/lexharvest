@@ -100,14 +100,20 @@ async def main() -> None:
     )
 
     normalizer_config = load_normalizer_config(args.config)
-    normalizer = SpaCyNormalizer(normalizer_config["language"], normalizer_config["model"])
+    target_normalizer = SpaCyNormalizer(
+        normalizer_config["target_language"], normalizer_config["target_model"]
+    )
+    source_normalizer = SpaCyNormalizer(
+        normalizer_config["source_language"], normalizer_config["source_model"]
+    )
 
     dict_client = WiktionaryClient()
     try:
         pipeline = Pipeline(
             repo=repo,
             splitter=splitter,
-            normalizer=normalizer,
+            target_normalizer=target_normalizer,
+            source_normalizer=source_normalizer,
             dict_client=dict_client,
             enricher=enricher,
             concurrency=args.concurrency,

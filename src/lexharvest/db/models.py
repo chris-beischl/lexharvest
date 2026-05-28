@@ -16,6 +16,7 @@ class VocabEntry(BaseModel):
     is_phrase: bool = False
     part_of_speech: str | None = None
     gender: str | None = None
+    article: str | None = None
     irregular: bool = False
     definitions: list[str] = []
     translations: list[str]

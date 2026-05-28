@@ -5,5 +5,12 @@
         "adjective": "El",
         "adverb": null,
         "other": null
+    },
+    "de": {
+        "noun": "Der",
+        "verb": "Wir",
+        "adjective": "Der",
+        "adverb": null,
+        "other": null
     }
 }

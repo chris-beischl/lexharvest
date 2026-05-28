@@ -8,7 +8,8 @@ payload_file = "duolingo_payload.json"
 accept_language = "de-DE,de;q=0.9"
 
 [normalizer]
-model = "es_core_news_sm"
+target_model = "es_core_news_sm"
+source_model = "de_core_news_sm"
 
 [llm]
 provider = "ollama"              # "ollama" | "openai" | "anthropic"

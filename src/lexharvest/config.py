@@ -42,6 +42,7 @@ def load_normalizer_config(config_path: str | Path = "config.toml") -> Any:
     config = load_config(config_path)
     normalizer_config = {
         **config["normalizer"],
-        "language": config["duolingo"]["target_language"],
+        "target_language": config["duolingo"]["target_language"],
+        "source_language": config["duolingo"]["source_language"],
     }
     return normalizer_config

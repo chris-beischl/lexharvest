@@ -106,6 +106,10 @@ class LexRepository:
         self.conn.commit()
 
     def update_vocab_entry(self, id: int, **kwargs: Any) -> None:
+        for key, value in kwargs.items():
+            if isinstance(value, list):
+                kwargs[key] = json.dumps(value)
+
         fields = ", ".join([f"{key} = ?" for key in kwargs])
         self.conn.execute(
             f"UPDATE vocab_entries SET {fields} WHERE id = ?",

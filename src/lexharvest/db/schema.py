@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS vocab_entries (
     is_phrase           INTEGER NOT NULL DEFAULT 0,
     part_of_speech      TEXT,
     gender              TEXT,
+    article             TEXT,
     irregular           INTEGER NOT NULL DEFAULT 0,
     translations        TEXT NOT NULL,          -- JSON array
     definitions         TEXT,                          -- JSON array, from dict lookup

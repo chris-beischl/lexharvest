@@ -30,7 +30,8 @@ class Pipeline:
         self,
         repo: LexRepository,
         splitter: SplitterAgent,
-        normalizer: BaseNormalizer,
+        target_normalizer: BaseNormalizer,
+        source_normalizer: BaseNormalizer,
         dict_client: WiktionaryClient,
         enricher: EnricherAgent,
         concurrency: int = 1,
@@ -38,7 +39,8 @@ class Pipeline:
     ):
         self.repo = repo
         self.splitter = splitter
-        self.normalizer = normalizer
+        self.target_normalizer = target_normalizer
+        self.source_normalizer = source_normalizer
         self.dict_client = dict_client
         self.enricher = enricher
         self.concurrency = concurrency
@@ -108,11 +110,30 @@ class Pipeline:
                 raise
         raise RuntimeError("unreachable")
 
-    def _run_normalize(self, hint_form: str, pos_hint: PosHint, language: str) -> str:
+    def _run_normalize_target(self, hint_form: str, pos_hint: PosHint, language: str) -> str:
         canonical = strip_article(hint_form, language)
         if " " not in canonical:
-            canonical = self.normalizer.normalize(canonical, pos_hint)
+            canonical = self.target_normalizer.normalize(canonical, pos_hint)
         return canonical
+
+    def _run_normalize_source(
+        self, raw_translations: list[str], pos_hint: PosHint, language: str
+    ) -> list[str]:
+        translations = []
+        for t in raw_translations:
+            translation = strip_article(t, language)
+            if " " not in translation:
+                translation = self.source_normalizer.normalize(translation, pos_hint)
+            translations.append(translation)
+
+        # remove duplicates
+        seen = set()
+        unique_translations = []
+        for t in translations:
+            if t not in seen:
+                seen.add(t)
+                unique_translations.append(t)
+        return unique_translations
 
     async def _run_dict_lookup(self, vocab: VocabEntry) -> None:
         assert vocab.id is not None
@@ -138,7 +159,9 @@ class Pipeline:
             vocab.id,
             status="done",
             gender=enriched.gender,
+            article=enriched.article,
             is_phrase=enriched.is_phrase,
+            translations=enriched.translations or vocab.translations,
             part_of_speech=None if enriched.is_phrase else vocab.part_of_speech,
             disambiguation_note=enriched.disambiguation_note,
             example_translation=enriched.example_translation,
@@ -185,7 +208,10 @@ class Pipeline:
                 pos_hint = cast(PosHint, entry.pos_hint or "other")
 
             # 2. normalize ----------------------------------------------------
-            canonical_form = self._run_normalize(hint_form, pos_hint, entry.target_language)
+            canonical_form = self._run_normalize_target(hint_form, pos_hint, entry.target_language)
+            translations = self._run_normalize_source(
+                entry.raw_translations, pos_hint, entry.source_language
+            )
             self.repo.update_raw_entry(entry.id, canonical_form=canonical_form)
             self.repo.log(entry.id, "normalize", "success", canonical_form)
 
@@ -205,7 +231,7 @@ class Pipeline:
                     canonical_form=canonical_form,
                     target_language=entry.target_language,
                     source_language=entry.source_language,
-                    translations=entry.raw_translations,
+                    translations=translations,
                     needs_review=True,
                 )
                 vocab_id = self.repo.insert_vocab_entry(vocab)

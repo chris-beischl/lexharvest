@@ -8,28 +8,45 @@ from lexharvest.db.models import VocabEntry
 SYSTEM_PROMPT = """You are enriching a vocabulary entry for a language learner.
 
 Given a word in the target language with its translations in the source language and
-dictionary data in English, fill in the missing linguistic metadata.
+optional dictionary data in English, fill in the missing linguistic metadata.
 
-- gender: grammatical gender appropriate for the target language (e.g. masculine,
-  feminine, neuter). null if not applicable to this word or language.
+- gender: grammatical gender of the word — "masculine", "feminine", or "neuter".
+  null if the word has no grammatical gender (e.g. verbs, adverbs, conjunctions).
+
+- article: the definite article as it is actually used with this word in practice.
+  IMPORTANT: the article may differ from what the gender alone implies. For example,
+  Spanish "agua" is grammatically feminine but takes the masculine article "el" in
+  singular (el agua) to avoid the vowel clash — so article should be "el", not "la".
+  Provide only the article itself (e.g. "el", "la", "der", "die", "das"). null if
+  not applicable (verbs, adjectives, phrases, etc.).
+
 - is_phrase: true for multi-word expressions, idioms, and verbal periphrases
   (e.g. tener que, a veces, terminar de). false for single words and compound
   nouns (e.g. lentes de sol). When unsure, ask: do these words need to appear
   together to carry the intended meaning?
+
+- translations: the translations are already normalized. Only return a corrected
+  list if the translations are clearly malformed (e.g. contain raw HTML, garbled
+  text, or obvious errors). Otherwise return null to keep the existing translations.
+
 - disambiguation_note: write exclusively in the source language specified in the
   input. Only include if this word is easily confused with another, or if a phrase
   has a non-obvious or idiomatic meaning (e.g. verbal periphrases like
   'terminar de + inf'). null if not needed.
+
 - example_translation: translate the provided example sentence into the source
   language naturally. null if no example is provided.
+
 - needs_review: true if you are uncertain about any field."""
 
 
 class EnrichmentResult(BaseModel):
-    gender: Literal["masculine", "feminine"] | None  # nouns only, None otherwise
+    gender: Literal["masculine", "feminine", "neuter"] | None  # nouns only, None otherwise
+    article: str | None  # definite article appropriate for the target language, if applicable
     is_phrase: bool
     disambiguation_note: str | None  # brief, in German, only if genuinely confusable
     example_translation: str | None  # German translation of example_sentence
+    translations: list[str] | None  # normalized translations in the source language
     needs_review: bool  # True if uncertain about any field
 
 
