@@ -16,7 +16,7 @@ from lexharvest.db.models import RawEntry
 from lexharvest.db.repository import LexRepository
 from lexharvest.db.schema import init_db
 from lexharvest.dictionaries.wiktionary import WiktionaryClient
-from lexharvest.exporters.anki import AnkiExporter
+from lexharvest.exporters import EXPORTER_REGISTRY
 from lexharvest.normalizers.spacy_normalizer import SpaCyNormalizer
 from lexharvest.pipeline import Pipeline
 from lexharvest.scrapers.duolingo import DuolingoExtractor
@@ -44,7 +44,20 @@ async def main() -> None:
         type=str,
         default=None,
         metavar="FILENAME",
-        help="Export completed entries as an Anki-ready CSV to the given file path",
+    )
+    parser.add_argument(
+        "--export-format",
+        type=str,
+        default="anki-apkg",
+        choices=EXPORTER_REGISTRY.keys(),
+        help="Export format to use when --export is specified",
+    )
+    parser.add_argument(
+        "--anki-template",
+        type=str,
+        default="anki_template.toml",
+        help="Path to Anki export template TOML file (only used if --export-format is \
+            an Anki format)",
     )
     args = parser.parse_args()
 
@@ -142,7 +155,10 @@ async def main() -> None:
         output_path = Path(args.export)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         entries = repo.get_vocab_entries_by_status("done")
-        AnkiExporter().export(entries, output_path)
+
+        exporter_cls = EXPORTER_REGISTRY[args.export_format]
+        exporter = exporter_cls(template_path=Path(args.anki_template))
+        exporter.export(entries, output_path)
         print(f"Exported {len(entries)} entries to {output_path}")
 
 

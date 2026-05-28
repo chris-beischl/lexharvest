@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.10.4"
 dependencies = [
+    "genanki>=0.13.1",
     "httpx>=0.28.1",
     "pandas>=2.3.3",
     "pydantic>=2.13.4",

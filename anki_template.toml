@@ -1,0 +1,188 @@
+# =============================================================================
+# LexHarvest — Anki Note Type Template
+# =============================================================================
+# This file defines the Anki note type used when exporting vocabulary as .apkg.
+# Edit card templates, styling, and field mappings here without touching code.
+# =============================================================================
+
+# Stable IDs for the Anki model and deck — do NOT change after first import,
+# or Anki will treat everything as a new note type and duplicate your cards.
+model_id = 5456690475
+deck_id  = 8448272112
+model_name = "LexHarvest Model"
+deck_name = "LexHarvest Deck"
+
+# -----------------------------------------------------------------------------
+# Fields & Columns
+# -----------------------------------------------------------------------------
+
+# DB columns to export (order does not matter here)
+columns = [
+    "id",
+    "canonical_form",
+    "translations",
+    "part_of_speech",
+    "gender",
+    "article",
+    "irregular",
+    "example_sentence",
+    "example_translation",
+    "disambiguation_note",
+]
+
+# Anki note fields — ORDER MATTERS: must match the field order in the note type.
+# Card templates reference these by name (e.g. {{Word}}, {{Translation}}).
+fields = [
+    "ID",
+    "Word",
+    "Translation",
+    "Part of Speech",
+    "Gender",
+    "Article",
+    "Irregular",
+    "Example Sentence",
+    "Example Translation",
+    "Disambiguation",
+]
+
+# -----------------------------------------------------------------------------
+# Styling (CSS)
+# -----------------------------------------------------------------------------
+
+css = """
+.card {
+    font-family: arial;
+    font-size: 20px;
+    line-height: 1.5;
+    text-align: center;
+    color: black;
+    background-color: white;
+}
+
+.word {
+    font-weight: bold;
+}
+
+.gender {
+    font-style: italic;
+    text-align: right;
+}
+
+.irregular {
+    font-weight: lighter;
+    font-style: italic;
+    text-align: right;
+}
+
+.hint-shown {
+    color: #888;
+}
+"""
+
+# -----------------------------------------------------------------------------
+# Mappings
+# -----------------------------------------------------------------------------
+
+# Maps DB column names → Anki field names
+[columns_to_fields_mapping]
+id                 = "ID"
+canonical_form     = "Word"
+translations       = "Translation"
+part_of_speech     = "Part of Speech"
+gender             = "Gender"
+article            = "Article"
+irregular          = "Irregular"
+example_sentence   = "Example Sentence"
+example_translation = "Example Translation"
+disambiguation_note = "Disambiguation"
+
+# Maps specific field values → display values
+# Keys must match the Anki field name (after column mapping)
+[value_mapping.Gender]
+masculine = "m"
+feminine  = "f"
+neuter    = "n"
+
+[value_mapping.Irregular]
+true  = "irr."   # shown in card template via {{#Irregular}}
+false = ""       # empty → Anki hides the {{#Irregular}} block
+
+# Separator used when joining list fields (e.g. translations)
+list_separator = ", "
+
+# -----------------------------------------------------------------------------
+# Card Templates
+# -----------------------------------------------------------------------------
+# source_to_target: learner sees translation (SOURCE) → recalls word (TARGET)
+# target_to_source: learner sees word (TARGET) → recalls translation (SOURCE)
+#
+# {{#Field}}...{{/Field}} — conditionally shown only if Field is non-empty
+# {{Field}}               — rendered value of Field
+# The example sentence toggle uses the note ID to ensure unique DOM element IDs.
+# -----------------------------------------------------------------------------
+
+[source_to_target]
+front = """
+{{Translation}}
+
+<br />
+{{#Example Translation}}
+<a class=hint href="#" onclick="this.style.display='none';document.getElementById('stot-hint-{{ID}}').style.display='inline-block';return false;">
+Example</a><div id="stot-hint-{{ID}}" class=hint-shown style="display: none">{{Example Translation}}</div>
+{{/Example Translation}}
+"""
+back = """
+{{Translation}}
+
+<br />
+{{#Example Translation}}
+<span class=hint-shown>{{Example Translation}}</span>
+{{/Example Translation}}
+
+<hr id=answer>
+
+{{#Article}}{{Article}} {{/Article}}<span class=word>{{Word}}</span> {{#Gender}}<span class=gender>{{Gender}}.</span>{{/Gender}} {{#Irregular}}<span class=irregular>{{Irregular}}</span>{{/Irregular}}
+
+<br />
+{{#Example Sentence}}
+<span class=hint-shown>{{Example Sentence}}</span>
+{{/Example Sentence}}
+
+<br /><br />
+{{#Disambiguation}}
+<span>{{Disambiguation}}</span>
+{{/Disambiguation}}
+"""
+
+[target_to_source]
+front = """
+{{#Article}}{{Article}} {{/Article}}<span class=word>{{Word}}</span> {{#Gender}}<span class=gender>{{Gender}}.</span>{{/Gender}} {{#Irregular}}<span class=irregular>{{Irregular}}</span>{{/Irregular}}
+
+<br />
+{{#Example Sentence}}
+<a class=hint href="#" onclick="this.style.display='none';document.getElementById('ttos-hint-{{ID}}').style.display='inline-block';return false;">
+Example</a><div id="ttos-hint-{{ID}}" class=hint-shown style="display: none">{{Example Sentence}}</div>
+{{/Example Sentence}}
+"""
+back = """
+{{#Article}}{{Article}} {{/Article}}<span class=word>{{Word}}</span> {{#Gender}}<span class=gender>{{Gender}}.</span>{{/Gender}} {{#Irregular}}<span class=irregular>{{Irregular}}</span>{{/Irregular}}
+
+<br />
+{{#Example Sentence}}
+<span class=hint-shown>{{Example Sentence}}</span>
+{{/Example Sentence}}
+
+<hr id=answer>
+
+{{Translation}}
+
+<br />
+{{#Example Translation}}
+<span class=hint-shown>{{Example Translation}}</span>
+{{/Example Translation}}
+
+<br /><br />
+{{#Disambiguation}}
+<span>{{Disambiguation}}</span>
+{{/Disambiguation}}
+"""
