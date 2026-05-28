@@ -1,12 +1,24 @@
-# lexharvest
+# LexHarvest 🦉⭐️
 
-Personal vocabulary pipeline: extract words from Duolingo, enrich them via an LLM agent, and export to CSV for use in any vocabulary trainer.
+Personal vocabulary pipeline: extract words from Duolingo, enrich them via an LLM agent, and export ready-to-import Anki decks.
+
+## Table of Contents
+
+- [What it does](#what-it-does)
+- [Setup](#setup)
+- [Getting your Duolingo credentials](#getting-your-duolingo-credentials)
+- [Run](#run)
+- [Exporting to Anki](#exporting-to-anki)
+- [Customising the Anki card template](#customising-the-anki-card-template)
+- [Contributing](#contributing)
+
+---
 
 ## What it does
 
 1. **Extract** — fetches your learned vocabulary from Duolingo via the unofficial API
-2. **Enrich** — runs each word through a normalizer and dictionary lookup, then an LLM agent fills in gender, irregular flag, example sentence, and disambiguation notes
-3. **Export** — writes a clean CSV ready for Anki or any other vocabulary trainer
+2. **Enrich** — runs each word through a normalizer and dictionary lookup, then an LLM agent fills in gender, article, irregular flag, example sentence, and disambiguation notes
+3. **Export** — generates a ready-to-import Anki deck (`.apkg`) with two card templates: word → translation and translation → word
 
 Ambiguous words (e.g. *cuento* as noun vs. verb) are split into separate entries by the agent. Words not found in any dictionary are skipped and logged.
 
@@ -28,6 +40,12 @@ Copy the example config files:
 cp .env.example .env
 cp config.toml.example config.toml
 touch duolingo_payload.json
+```
+
+**Install pre-commit hooks** (runs ruff, mypy, and basic file checks on every commit):
+
+```sh
+uv run pre-commit install
 ```
 
 ---
@@ -58,7 +76,7 @@ Filter by `lex` to narrow down the requests. Look for a request called **`learne
 
 In the **Headers** tab of the `learned-lexemes` request, find:
 
-- **`Authorization`** — copy the full value (starts with `Bearer eyJ...`) and paste it into `.env`:
+- **`Authorization`** — copy the full value (starts with `Bearer eyJ...`) and paste it into [`.env`](.env):
   ```
   DUOLINGO_AUTHENTIFICATION=Bearer eyJ...
   ```
@@ -66,7 +84,7 @@ In the **Headers** tab of the `learned-lexemes` request, find:
   ```
   /users/{user_id}/courses/{target_language}/{source_language}/learned-lexemes
   ```
-  Update these three values in `config.toml`.
+  Update these three values in [`config.toml`](config.toml).
 
 ---
 
@@ -86,7 +104,7 @@ Copy the entire JSON body and paste it into `duolingo_payload.json`.
 
 ### Step 5 — Configure your LLM
 
-Open `config.toml` and set your provider and model:
+Open [`config.toml`](config.toml) and set your provider and model:
 
 ```toml
 [llm]
@@ -95,7 +113,7 @@ model = "gemma4:e2b"
 # base_url = "http://localhost:11434/v1"   # ollama only
 ```
 
-For cloud providers, add the corresponding API key to `.env`:
+For cloud providers, add the corresponding API key to [`.env`](.env):
 
 ```
 OPENAI_API_KEY=sk-...
@@ -105,25 +123,23 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
-### Step 6 — Install the spaCy language model
+### Step 6 — Install the spaCy language models
 
-The normalizer uses a spaCy model for your target language. You need to install it manually — find the right model for your language on the [spaCy models page](https://spacy.io/usage/models), then install it with:
+The pipeline uses spaCy models for **both** your target language (the one you're learning) and your source language (your native language) to normalise vocabulary. You need to install both manually — find the right models on the [spaCy models page](https://spacy.io/usage/models).
 
-```sh
-uv run python -m spacy download <model-name>
-```
-
-For example, for Spanish:
+For example, for Spanish (target) and German (source):
 
 ```sh
 uv run python -m spacy download es_core_news_sm
+uv run python -m spacy download de_core_news_sm
 ```
 
-Update `config.toml` with the model name you chose:
+Update [`config.toml`](config.toml) with the model names you chose:
 
 ```toml
 [normalizer]
-model = "es_core_news_sm"
+target_model = "es_core_news_sm"
+source_model = "de_core_news_sm"
 ```
 
 ---
@@ -134,6 +150,8 @@ model = "es_core_news_sm"
 uv run python -m lexharvest
 ```
 
+This will scrape your Duolingo vocabulary, normalize and enrich each word, and store the results in the local SQLite database (`lexharvest.db`). The pipeline is resumable — if it stops partway through, just run it again and it picks up where it left off.
+
 **Flags:**
 
 | Flag | Description |
@@ -142,3 +160,62 @@ uv run python -m lexharvest
 | `--retry-errors` | Reset all errored entries to pending and reprocess them |
 | `--concurrency N` | Number of concurrent LLM calls (default: 1) |
 | `--dict-concurrency N` | Number of concurrent Wiktionary requests (default: 1) |
+| `--export FILENAME` | Export completed entries to the given file path |
+| `--export-format FORMAT` | Export format: `csv`, `anki-tsv`, or `anki-apkg` (default: `anki-apkg`) |
+| `--anki-template PATH` | Path to the Anki template TOML (default: `anki_template.toml`) |
+
+---
+
+## Exporting to Anki
+
+### Option A — Anki package (.apkg)
+
+The recommended way. Generates a ready-to-import Anki deck with card templates and styling included:
+
+```sh
+uv run python -m lexharvest --skip-scrape --export exports/lexharvest.apkg
+```
+
+Import the `.apkg` file into Anki via **File → Import**. Re-importing after a new run will update existing cards without resetting your review progress, as long as the note IDs in [`anki_template.toml`](anki_template.toml) haven't changed.
+
+> ⚠️ Do **not** change `model_id` or `deck_id` in [`anki_template.toml`](anki_template.toml) after the first import — Anki uses these to match your existing note type and deck. Changing them creates duplicates.
+
+### Option B — Tab-separated file (.tsv)
+
+Exports a tab-separated file you can import manually into an existing Anki note type:
+
+```sh
+uv run python -m lexharvest --skip-scrape --export exports/cards.tsv --export-format anki-tsv
+```
+
+When importing into Anki, make sure the field order in your note type matches the column order in the file. The columns are:
+
+`ID · Word · Translation · Part of Speech · Gender · Article · Irregular · Example Sentence · Example Translation · Disambiguation`
+
+---
+
+## Customising the Anki card template
+
+The card layout, styling, and field mappings are fully defined in [`anki_template.toml`](anki_template.toml) — no code changes needed. Key sections:
+
+| Section | What it controls |
+|---|---|
+| `model_id` / `deck_id` | Stable Anki identifiers — set once, **never change** after first import |
+| `columns` | Which DB fields to export |
+| `fields` | Anki note field names (order matters) |
+| `columns_to_fields_mapping` | Maps DB column names → Anki field names |
+| `value_mapping` | Transforms field values (e.g. `masculine` → `m`) |
+| `[source_to_target]` | Card template: translation → word (production) |
+| `[target_to_source]` | Card template: word → translation (recognition) |
+| `css` | Shared stylesheet for both card templates |
+
+---
+
+## Contributing
+
+```sh
+uv run pre-commit install   # install hooks (ruff, mypy, file checks)
+uv run pytest               # run tests
+```
+
+Pull requests and issues are welcome.

@@ -59,7 +59,22 @@ async def main() -> None:
         help="Path to Anki export template TOML file (only used if --export-format is \
             an Anki format)",
     )
+    parser.add_argument(
+        "--overwrite-export",
+        action="store_true",
+        default=False,
+        help="Whether to overwrite the export file if it already exists",
+    )
     args = parser.parse_args()
+
+    if args.export is not None and not args.overwrite_export:
+        export_path = Path(args.export)
+        if export_path.exists():
+            print(
+                f"Error: Export file '{export_path}' already exists. Use "
+                "--overwrite-export to overwrite it."
+            )
+            return
 
     load_dotenv()
 

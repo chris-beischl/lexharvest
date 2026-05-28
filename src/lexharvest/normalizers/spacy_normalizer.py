@@ -5,7 +5,7 @@ import spacy
 
 from .base import BaseNormalizer, PosHint
 
-_DEFAULT_POS_HINTS = Path(__file__).parent / "pos_hints.json"
+_DEFAULT_POS_HINTS = Path("pos_hints.json")
 
 
 class SpaCyNormalizer(BaseNormalizer):
