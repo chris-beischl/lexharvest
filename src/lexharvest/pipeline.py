@@ -77,7 +77,7 @@ class Pipeline:
         for coro in tqdm(asyncio.as_completed(tasks2), total=len(tasks2), desc="dict lookup"):
             await coro
 
-        # Phase 3: VocabEntry(dict_looked_up) → enrich → done  (TODO)
+        # Phase 3: VocabEntry(dict_looked_up) → enrich → done
         to_enrich = self.repo.get_vocab_entries_by_status("dict_looked_up")
 
         async def enrich(vocab: VocabEntry) -> None:
