@@ -162,8 +162,8 @@ async def main() -> None:
     print(
         f"Processed: {stats.processed} | Split: {stats.split} | Done: {stats.done} "
         f"| Errors: {stats.errors} | Dict hits: {stats.dict_hits} | Dict misses: "
-        f"{stats.dict_misses} | | Enriched: {stats.enriched} | Enrich errors: "
-        f"{stats.enrich_errors}"
+        f"{stats.dict_misses} | Enriched: {stats.enriched} | Enrich errors: "
+        f"{stats.enrich_errors} | Needs review: {stats.needs_review}"
     )
 
     if args.export:

@@ -5,7 +5,7 @@ from typing import cast
 
 from tqdm import tqdm
 
-from lexharvest.agents.enricher import EnricherAgent
+from lexharvest.agents.enricher import EnricherAgent, EnrichmentResult
 from lexharvest.agents.splitter import SplitDecision, SplitterAgent
 from lexharvest.db.models import RawEntry, VocabEntry
 from lexharvest.db.repository import LexRepository
@@ -23,6 +23,7 @@ class PipelineStats:
     dict_misses: int = 0
     enriched: int = 0
     enrich_errors: int = 0
+    needs_review: int = 0  # entries the LLM flagged as uncertain
 
 
 class Pipeline:
@@ -83,8 +84,10 @@ class Pipeline:
         async def enrich(vocab: VocabEntry) -> None:
             async with sem:
                 try:
-                    await self._run_enrich(vocab)
+                    result = await self._run_enrich(vocab)
                     stats.enriched += 1
+                    if result.needs_review:
+                        stats.needs_review += 1
                 except Exception:
                     stats.enrich_errors += 1  # status stays "dict_looked_up", retried next run
 
@@ -152,7 +155,7 @@ class Pipeline:
             dict_source="wiktionary",
         )
 
-    async def _run_enrich(self, vocab: VocabEntry) -> None:
+    async def _run_enrich(self, vocab: VocabEntry) -> EnrichmentResult:
         assert vocab.id is not None
         enriched = await self.enricher.enrich(vocab)
         self.repo.update_vocab_entry(
@@ -168,6 +171,7 @@ class Pipeline:
             example_translation=enriched.example_translation,
             needs_review=enriched.needs_review,
         )
+        return enriched
 
     async def _normalize_entry(self, entry: RawEntry, stats: PipelineStats) -> None:
         assert entry.id is not None
