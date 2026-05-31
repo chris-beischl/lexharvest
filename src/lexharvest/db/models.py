@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-Status = Literal["pending", "processing", "processed", "skipped", "duplicate", "split", "error"]
+Status = Literal["pending", "split", "done", "error"]
 LogStatus = Literal["success", "failure", "skipped"]
 VocabStatus = Literal["normalized", "dict_looked_up", "enriched", "done"]
 
